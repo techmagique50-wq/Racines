@@ -16,6 +16,7 @@ import { EventsPage } from './pages/EventsPage.tsx'
 import { MessagesPage } from './pages/MessagesPage.tsx'
 import { DemandesPage } from './pages/DemandesPage.tsx'
 import { OnboardingPage } from './pages/OnboardingPage.tsx'
+import { EditProfilePage } from './pages/EditProfilePage.tsx'
 
 const router = createHashRouter([
   { path: '/login', element: <LoginPage /> },
@@ -36,6 +37,7 @@ const router = createHashRouter([
       { path: 'messages/:id', element: <MessagesPage /> },
       { path: 'ajouter', element: <AddRelativePage /> },
       { path: 'onboarding', element: <OnboardingPage /> },
+      { path: 'profil/editer', element: <EditProfilePage /> },
     ],
   },
 ])

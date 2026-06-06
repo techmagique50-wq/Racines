@@ -27,6 +27,7 @@ export default function App() {
   const theme = useStore((s) => s.theme)
   const toggleTheme = useStore((s) => s.toggleTheme)
   const logout = useStore((s) => s.logout)
+  const guest = useStore((s) => s.guest)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
@@ -38,8 +39,8 @@ export default function App() {
     </button>
   )
 
-  if (!account) return <Navigate to="/login" replace />
-  return <Shell me={<MeBlock />} themeBtn={ThemeBtn} loc={loc} onLogout={() => { logout(); navigate('/login') }} />
+  if (!account && !guest) return <Navigate to="/login" replace />
+  return <Shell me={<MeBlock />} themeBtn={ThemeBtn} loc={loc} isGuest={!account} onLogout={() => { logout(); navigate('/login') }} />
 }
 
 function MeBlock() {
@@ -55,11 +56,13 @@ function Shell({
   me,
   themeBtn: ThemeBtn,
   loc,
+  isGuest,
   onLogout,
 }: {
   me: React.ReactNode
   themeBtn: (p: { className?: string }) => React.ReactElement
   loc: ReturnType<typeof useLocation>
+  isGuest: boolean
   onLogout: () => void
 }) {
   const meP = useMe()
@@ -120,19 +123,31 @@ function Shell({
             <span className="text-sm text-muted">Thème</span>
             <ThemeBtn className="text-ink hover:bg-bg" />
           </div>
-          <div className="flex items-center gap-2 rounded-xl bg-bg p-2">
-            <Avatar person={meP} size={36} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-ink">{meP.firstName} {meP.lastName}</div>
-              <NavLink to={`/membre/${meP.id}`} className="text-xs text-sage">mon profil</NavLink>
+          {isGuest ? (
+            <NavLink to="/signup" className="flex items-center justify-center gap-2 rounded-xl bg-gold px-3 py-2.5 text-sm font-semibold text-white">
+              <UserPlus size={16} /> Créer mon compte
+            </NavLink>
+          ) : (
+            <div className="flex items-center gap-2 rounded-xl bg-bg p-2">
+              <Avatar person={meP} size={36} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-ink">{meP.firstName} {meP.lastName}</div>
+                <NavLink to={`/membre/${meP.id}`} className="text-xs text-sage">mon profil</NavLink>
+              </div>
+              <button onClick={onLogout} title="Déconnexion" className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-line/50"><LogOut size={16} /></button>
             </div>
-            <button onClick={onLogout} title="Déconnexion" className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-line/50"><LogOut size={16} /></button>
-          </div>
+          )}
         </div>
       </aside>
 
       {/* Contenu */}
       <main className="flex-1 animate-fade-up p-4 pb-24 md:pb-6" key={loc.pathname}>
+        {isGuest && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-gold/40 bg-gold-soft/60 p-3">
+            <span className="text-sm text-muted">👀 Tu explores la famille <b className="text-ink">démo (Mballa)</b>. Crée ton compte pour bâtir <b className="text-ink">ta</b> famille.</span>
+            <NavLink to="/signup" className="rounded-xl bg-gold px-3 py-1.5 text-sm font-semibold text-white">Créer mon compte</NavLink>
+          </div>
+        )}
         <Outlet />
       </main>
 

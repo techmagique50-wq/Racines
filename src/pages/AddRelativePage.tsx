@@ -4,6 +4,7 @@ import { Info, UserPlus } from 'lucide-react'
 import { useStore } from '../store'
 import type { Gender, LifeState } from '../family/types'
 import { Avatar, PageTitle } from '../ui/ui'
+import { NameSuggest } from '../components/NameSuggest'
 
 type RelType = 'parent' | 'child' | 'spouse'
 const REL_LABEL: Record<RelType, string> = { parent: 'le parent', child: "l'enfant", spouse: 'le/la conjoint·e' }
@@ -14,6 +15,7 @@ export function AddRelativePage() {
   const persons = useStore((s) => s.persons)
   const meId = useStore((s) => s.meId)
   const addRelative = useStore((s) => s.addRelative)
+  const linkExisting = useStore((s) => s.linkExisting)
 
   const [relativeOf, setRelativeOf] = useState(params.get('relativeOf') ?? meId)
   const [type, setType] = useState<RelType>('parent')
@@ -86,6 +88,12 @@ export function AddRelativePage() {
           <Field label="Prénom *" value={firstName} onChange={setFirstName} />
           <Field label="Nom *" value={lastName} onChange={setLastName} />
         </div>
+        <NameSuggest
+          firstName={firstName}
+          lastName={lastName}
+          excludeIds={[relativeOf]}
+          onPick={(p) => { linkExisting(p.id, { type, relativeOf }); navigate(`/membre/${p.id}`) }}
+        />
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">Sexe</label>

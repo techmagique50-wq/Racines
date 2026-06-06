@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { buildGraph, type FamilyGraph } from './family/engine'
 import { hashPassword } from './lib/hash'
 import {
+  ME_ID,
   seedFiliations,
   seedPersons,
   seedTributes,
@@ -55,6 +56,7 @@ interface State {
   // social
   accounts: Account[]
   authId: string | null
+  guest: boolean
   meId: string
   posts: Post[]
   events: FamilyEvent[]
@@ -69,9 +71,14 @@ interface State {
   signup: (input: SignupInput) => AuthResult
   login: (email: string, password: string) => AuthResult
   logout: () => void
+  /** Mode visiteur : explorer la famille de démonstration sans compte. */
+  enterGuest: () => void
 
   // arbre
   addRelative: (person: Omit<Person, 'id'>, link: { type: 'parent' | 'child' | 'spouse'; relativeOf: string; confirmed?: boolean }) => string
+  /** Relie une personne EXISTANTE (évite les doublons) au lieu d'en créer une. */
+  linkExisting: (existingId: string, link: { type: 'parent' | 'child' | 'spouse'; relativeOf: string; confirmed?: boolean }) => void
+  updatePerson: (id: string, patch: Partial<Person>) => void
   confirmFiliation: (id: string) => void
   confirmUnion: (id: string) => void
   approveMember: (personId: string) => void
@@ -104,6 +111,7 @@ const initial = {
   tributes: seedTributes,
   accounts: seedAccounts,
   authId: null as string | null,
+  guest: false,
   meId: '',
   posts: seedPosts,
   events: seedEvents,
@@ -160,7 +168,7 @@ export const useStore = create<State>()(
           personId,
           createdAt: Date.now(),
         }
-        set((s) => ({ accounts: [...s.accounts, account], authId: account.id, meId: personId! }))
+        set((s) => ({ accounts: [...s.accounts, account], authId: account.id, meId: personId!, guest: false }))
         return { ok: true }
       },
 
@@ -169,11 +177,12 @@ export const useStore = create<State>()(
         const acc = get().accounts.find((a) => a.email === e)
         if (!acc || acc.password !== hashPassword(password))
           return { ok: false, error: 'Email ou mot de passe incorrect.' }
-        set({ authId: acc.id, meId: acc.personId })
+        set({ authId: acc.id, meId: acc.personId, guest: false })
         return { ok: true }
       },
 
-      logout: () => set({ authId: null }),
+      logout: () => set({ authId: null, guest: false }),
+      enterGuest: () => set({ guest: true, meId: ME_ID }),
 
       // ── Arbre ───────────────────────────────────────────────────────────────
       addRelative: (person, link) => {
@@ -189,6 +198,17 @@ export const useStore = create<State>()(
         }
         return id
       },
+      linkExisting: (existingId, link) => {
+        const status = link.confirmed ? 'confirmed' : 'pending'
+        if (link.type === 'spouse') {
+          set((s) => ({ unions: [...s.unions, { id: newId('u'), aId: link.relativeOf, bId: existingId, status }] }))
+        } else {
+          const childId = link.type === 'child' ? existingId : link.relativeOf
+          const parentId = link.type === 'parent' ? existingId : link.relativeOf
+          set((s) => ({ filiations: [...s.filiations, { id: newId('f'), childId, parentId, status }] }))
+        }
+      },
+      updatePerson: (id, patch) => set((s) => ({ persons: s.persons.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
       confirmFiliation: (id) => set((s) => ({ filiations: s.filiations.map((f) => (f.id === id ? { ...f, status: 'confirmed' } : f)) })),
       confirmUnion: (id) => set((s) => ({ unions: s.unions.map((u) => (u.id === id ? { ...u, status: 'confirmed' } : u)) })),
 
