@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Check, Plus, Sparkles, UserPlus } from 'lucide-react'
 import { useMe, useStore } from '../store'
 import { parentsOf } from '../family/engine'
@@ -10,11 +10,14 @@ import { NameSuggest } from '../components/NameSuggest'
 export function OnboardingPage() {
   const me = useMe()
   const graph = useStore((s) => s.graph)()
+  const guest = useStore((s) => s.guest)
   const navigate = useNavigate()
 
   const myParents = parentsOf(graph, me.id)
   const father = myParents.find((p) => p.gender === 'M')
   const mother = myParents.find((p) => p.gender === 'F')
+
+  if (guest) return <Navigate to="/signup" replace />
 
   return (
     <div className="mx-auto max-w-xl">

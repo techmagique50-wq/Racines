@@ -1,7 +1,17 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { Person } from '../family/types'
 import { describeRelationship } from '../family/engine'
 import { useStore } from '../store'
+
+/**
+ * Accès limité en mode visiteur : `gate(fn)` exécute l'action si l'utilisateur
+ * a un compte, sinon le redirige vers l'inscription.
+ */
+export function useGate() {
+  const guest = useStore((s) => s.guest)
+  const navigate = useNavigate()
+  return { guest, gate: (fn: () => void) => (guest ? navigate('/signup') : fn()) }
+}
 
 export function Avatar({ person, size = 44 }: { person?: Person; size?: number }) {
   if (!person)

@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { Heart, MessageCircle, Send, Star } from 'lucide-react'
 import { useStore } from '../store'
 import type { Post } from '../family/types'
-import { Avatar, PageTitle, timeAgo, useRelationToMe } from '../ui/ui'
+import { Avatar, PageTitle, timeAgo, useGate, useRelationToMe } from '../ui/ui'
 
 export function FeedPage() {
   const posts = useStore((s) => s.posts)
   const addPost = useStore((s) => s.addPost)
+  const { gate } = useGate()
   const [text, setText] = useState('')
 
   const now = useMemo(() => {
@@ -29,7 +30,7 @@ export function FeedPage() {
       <div className="mb-4 rounded-2xl border border-line bg-card p-3">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="Quoi de neuf dans la famille ?" className="w-full resize-none rounded-xl bg-bg p-3 text-sm focus:outline-none focus:ring-1 focus:ring-sage" />
         <div className="mt-2 flex justify-end">
-          <button onClick={submit} disabled={!text.trim()} className="flex items-center gap-1.5 rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+          <button onClick={() => gate(submit)} disabled={!text.trim()} className="flex items-center gap-1.5 rounded-xl bg-sage px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
             <Send size={16} /> Publier
           </button>
         </div>
@@ -52,8 +53,10 @@ function PostCard({ post, now }: { post: Post; now: number }) {
   const rel = useRelationToMe(post.authorId)
   const memoryPerson = post.memoryOf ? persons.find((p) => p.id === post.memoryOf) : undefined
   const liked = post.likes.includes(meId)
+  const { gate } = useGate()
   const [open, setOpen] = useState(false)
   const [comment, setComment] = useState('')
+  const sendComment = () => gate(() => { if (comment.trim()) { addComment(post.id, comment.trim()); setComment('') } })
 
   return (
     <article className="rounded-2xl border border-line bg-card p-4">
@@ -77,7 +80,7 @@ function PostCard({ post, now }: { post: Post; now: number }) {
       <p className="mt-3 whitespace-pre-wrap text-[15px] text-ink">{post.text}</p>
 
       <div className="mt-3 flex items-center gap-4 border-t border-line pt-3 text-sm">
-        <button onClick={() => toggleLike(post.id)} className={`flex items-center gap-1.5 ${liked ? 'text-terre' : 'text-muted'}`}>
+        <button onClick={() => gate(() => toggleLike(post.id))} className={`flex items-center gap-1.5 ${liked ? 'text-terre' : 'text-muted'}`}>
           <Heart size={18} fill={liked ? 'currentColor' : 'none'} /> {post.likes.length}
         </button>
         <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 text-muted">
@@ -100,8 +103,8 @@ function PostCard({ post, now }: { post: Post; now: number }) {
             )
           })}
           <div className="flex items-center gap-2">
-            <input value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && comment.trim()) { addComment(post.id, comment.trim()); setComment('') } }} placeholder="Commenter…" className="flex-1 rounded-full bg-bg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-sage" />
-            <button onClick={() => { if (comment.trim()) { addComment(post.id, comment.trim()); setComment('') } }} className="rounded-full bg-sage p-2 text-white"><Send size={16} /></button>
+            <input value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendComment() }} placeholder="Commenter…" className="flex-1 rounded-full bg-bg px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-sage" />
+            <button onClick={sendComment} className="rounded-full bg-sage p-2 text-white"><Send size={16} /></button>
           </div>
         </div>
       )}

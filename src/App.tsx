@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home, Network, GitCompareArrows, Users, UserPlus, TreePine, Moon, Sun,
   Newspaper, MessageCircle, CalendarHeart, LogOut, UserCheck,
@@ -28,10 +28,16 @@ export default function App() {
   const toggleTheme = useStore((s) => s.toggleTheme)
   const logout = useStore((s) => s.logout)
   const guest = useStore((s) => s.guest)
+  const enterGuest = useStore((s) => s.enterGuest)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+
+  // Entrée directe : pas de compte → on explore en visiteur, sans écran de connexion.
+  useEffect(() => {
+    if (!account && !guest) enterGuest()
+  }, [account, guest, enterGuest])
 
   const ThemeBtn = ({ className = '' }: { className?: string }) => (
     <button onClick={toggleTheme} aria-label="Changer de thème" className={`grid h-9 w-9 place-items-center rounded-full transition active:scale-90 ${className}`}>
@@ -39,7 +45,7 @@ export default function App() {
     </button>
   )
 
-  if (!account && !guest) return <Navigate to="/login" replace />
+  if (!account && !guest) return null // bref, le temps que le mode visiteur s'active
   return <Shell me={<MeBlock />} themeBtn={ThemeBtn} loc={loc} isGuest={!account} onLogout={() => { logout(); navigate('/login') }} />
 }
 

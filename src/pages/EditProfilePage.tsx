@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
 import { useMe, useStore } from '../store'
 import { parentsOf } from '../family/engine'
@@ -12,6 +12,7 @@ export function EditProfilePage() {
   const me = useMe()
   const graph = useStore((s) => s.graph)()
   const updatePerson = useStore((s) => s.updatePerson)
+  const guest = useStore((s) => s.guest)
   const navigate = useNavigate()
 
   const [avatar, setAvatar] = useState(me.avatar ?? '🧑🏾')
@@ -43,6 +44,8 @@ export function EditProfilePage() {
     })
     navigate(`/membre/${me.id}`)
   }
+
+  if (guest) return <Navigate to="/signup" replace />
 
   return (
     <div className="mx-auto max-w-xl">

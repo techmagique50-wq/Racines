@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { LogIn, TreePine, Eye } from 'lucide-react'
+import { LogIn, TreePine } from 'lucide-react'
 import { useStore } from '../store'
 
 export function LoginPage() {
   const login = useStore((s) => s.login)
-  const enterGuest = useStore((s) => s.enterGuest)
   const authId = useStore((s) => s.authId)
   const theme = useStore((s) => s.theme)
   const navigate = useNavigate()
@@ -44,11 +43,6 @@ export function LoginPage() {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} placeholder="••••••••" className="mb-4 w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-sage focus:outline-none" />
           <button onClick={submit} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 font-semibold text-white transition active:scale-[0.98]">
             <LogIn size={18} /> Se connecter
-          </button>
-
-          <div className="my-3 flex items-center gap-3 text-xs text-faint"><span className="h-px flex-1 bg-line" />ou<span className="h-px flex-1 bg-line" /></div>
-          <button onClick={() => { enterGuest(); navigate('/', { replace: true }) }} className="flex w-full items-center justify-center gap-2 rounded-xl bg-sage-soft py-3 font-semibold text-sage transition active:scale-[0.98]">
-            <Eye size={18} /> Explorer sans compte
           </button>
 
           <p className="mt-4 text-center text-sm text-muted">Pas encore de compte ? <Link to="/signup" className="font-semibold text-sage">Rejoindre ma famille</Link></p>

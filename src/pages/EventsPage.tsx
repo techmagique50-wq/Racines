@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react'
 import { CalendarHeart, MapPin, Plus, Users, X } from 'lucide-react'
 import { useStore } from '../store'
 import { EVENT_KIND, type EventKind, type FamilyEvent } from '../family/types'
-import { Avatar, PageTitle } from '../ui/ui'
+import { Avatar, PageTitle, useGate } from '../ui/ui'
 
 export function EventsPage() {
   const events = useStore((s) => s.events)
+  const { gate } = useGate()
   const [open, setOpen] = useState(false)
   const sorted = useMemo(() => [...events].sort((a, b) => a.date.localeCompare(b.date)), [events])
 
@@ -13,7 +14,7 @@ export function EventsPage() {
     <div className="mx-auto max-w-xl">
       <div className="mb-4 flex items-start justify-between">
         <PageTitle title="Événements" subtitle="Mariages, deuils, naissances, retrouvailles…" />
-        <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 rounded-xl bg-gold px-3 py-2 text-sm font-semibold text-white"><Plus size={16} /> Créer</button>
+        <button onClick={() => gate(() => setOpen(true))} className="flex items-center gap-1.5 rounded-xl bg-gold px-3 py-2 text-sm font-semibold text-white"><Plus size={16} /> Créer</button>
       </div>
 
       <div className="space-y-4">
@@ -30,6 +31,7 @@ function EventCard({ event }: { event: FamilyEvent }) {
   const meId = useStore((s) => s.meId)
   const persons = useStore((s) => s.persons)
   const rsvp = useStore((s) => s.toggleRsvp)
+  const { gate } = useGate()
   const k = EVENT_KIND[event.kind]
   const going = event.participants.includes(meId)
   const date = new Date(event.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -58,7 +60,7 @@ function EventCard({ event }: { event: FamilyEvent }) {
           </div>
           <span>{event.participants.length}</span>
         </div>
-        <button onClick={() => rsvp(event.id)} className={`rounded-xl px-4 py-1.5 text-sm font-semibold ${going ? 'bg-sage-soft text-sage' : 'bg-sage text-white'}`}>
+        <button onClick={() => gate(() => rsvp(event.id))} className={`rounded-xl px-4 py-1.5 text-sm font-semibold ${going ? 'bg-sage-soft text-sage' : 'bg-sage text-white'}`}>
           {going ? 'Je participe ✓' : 'Participer'}
         </button>
       </div>

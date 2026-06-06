@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Info, UserPlus } from 'lucide-react'
 import { useStore } from '../store'
 import type { Gender, LifeState } from '../family/types'
@@ -29,6 +29,7 @@ export function AddRelativePage() {
   const [city, setCity] = useState('')
   const [phone, setPhone] = useState('')
 
+  const guest = useStore((s) => s.guest)
   const anchor = persons.find((p) => p.id === relativeOf)
 
   const submit = () => {
@@ -51,6 +52,8 @@ export function AddRelativePage() {
     )
     navigate(`/membre/${id}`)
   }
+
+  if (guest) return <Navigate to="/signup" replace />
 
   return (
     <div className="mx-auto max-w-xl">

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Send, Users, X } from 'lucide-react'
 import { useStore } from '../store'
 import type { Conversation } from '../family/types'
-import { Avatar, PageTitle, timeAgo, useRelationToMe } from '../ui/ui'
+import { Avatar, PageTitle, timeAgo, useGate, useRelationToMe } from '../ui/ui'
 
 export function MessagesPage() {
   const { id } = useParams()
@@ -22,6 +22,7 @@ function ConversationList() {
   const conversations = useStore((s) => s.conversations)
   const messages = useStore((s) => s.messages)
   const persons = useStore((s) => s.persons)
+  const { gate } = useGate()
   const [groupOpen, setGroupOpen] = useState(false)
   const [pickOpen, setPickOpen] = useState(false)
   const name = (id: string) => { const p = persons.find((x) => x.id === id); return p ? `${p.firstName} ${p.lastName}` : '?' }
@@ -42,8 +43,8 @@ function ConversationList() {
       <div className="mb-4 flex items-start justify-between">
         <PageTitle title="Messages" subtitle="Discussions privées et groupes de la famille" />
         <div className="flex gap-2">
-          <button onClick={() => setPickOpen(true)} className="rounded-xl bg-bg p-2 text-primary ring-1 ring-line" title="Nouvelle discussion"><Plus size={18} /></button>
-          <button onClick={() => setGroupOpen(true)} className="rounded-xl bg-sage p-2 text-white" title="Nouveau groupe"><Users size={18} /></button>
+          <button onClick={() => gate(() => setPickOpen(true))} className="rounded-xl bg-bg p-2 text-primary ring-1 ring-line" title="Nouvelle discussion"><Plus size={18} /></button>
+          <button onClick={() => gate(() => setGroupOpen(true))} className="rounded-xl bg-sage p-2 text-white" title="Nouveau groupe"><Users size={18} /></button>
         </div>
       </div>
 
@@ -82,6 +83,7 @@ function ConversationView({ convId }: { convId: string }) {
   const messages = useStore((s) => s.messages)
   const persons = useStore((s) => s.persons)
   const sendMessage = useStore((s) => s.sendMessage)
+  const { gate } = useGate()
   const [text, setText] = useState('')
   const conv = conversations.find((c) => c.id === convId)
   const name = (id: string) => { const p = persons.find((x) => x.id === id); return p ? `${p.firstName} ${p.lastName}` : '?' }
@@ -91,7 +93,7 @@ function ConversationView({ convId }: { convId: string }) {
   const thread = useMemo(() => messages.filter((m) => m.conversationId === convId).sort((a, b) => a.createdAt - b.createdAt), [messages, convId])
   if (!conv) return <p className="text-faint">Discussion introuvable.</p>
 
-  const send = () => { if (text.trim()) { sendMessage(convId, text.trim()); setText('') } }
+  const send = () => gate(() => { if (text.trim()) { sendMessage(convId, text.trim()); setText('') } })
 
   return (
     <div className="mx-auto flex max-w-xl flex-col" style={{ height: 'calc(100vh - 7rem)' }}>
