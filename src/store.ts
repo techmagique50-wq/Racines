@@ -45,6 +45,8 @@ interface SignupInput {
   password: string
   claimPersonId?: string
   newPerson?: { firstName: string; lastName: string; gender: Gender; clan?: string; village?: string; city?: string }
+  fatherName?: string
+  motherName?: string
 }
 
 interface State {
@@ -159,6 +161,27 @@ export const useStore = create<State>()(
           set((s) => ({ persons: [...s.persons, person] }))
         }
         if (!personId) return { ok: false, error: 'Choisis ton profil ou crée-en un.' }
+
+        // Crée automatiquement les parents nommés (père / mère) + filiations.
+        const addParent = (name: string, gender: Gender) => {
+          const parts = name.trim().split(/\s+/)
+          const pid = newId('p')
+          const parent: Person = {
+            id: pid,
+            firstName: parts[0],
+            lastName: parts.slice(1).join(' '),
+            gender,
+            state: 'vivant',
+            avatar: gender === 'M' ? '🧑🏾' : '👩🏾',
+          }
+          set((s) => ({
+            persons: [...s.persons, parent],
+            filiations: [...s.filiations, { id: newId('f'), childId: personId!, parentId: pid, status: 'confirmed' }],
+          }))
+        }
+        const curParents = get().filiations.filter((f) => f.childId === personId).map((f) => get().persons.find((p) => p.id === f.parentId))
+        if (input.fatherName?.trim() && !curParents.some((p) => p?.gender === 'M')) addParent(input.fatherName, 'M')
+        if (input.motherName?.trim() && !curParents.some((p) => p?.gender === 'F')) addParent(input.motherName, 'F')
 
         const account: Account = {
           id: newId('acc'),

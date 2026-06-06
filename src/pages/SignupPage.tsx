@@ -21,6 +21,8 @@ export function SignupPage() {
   const [gender, setGender] = useState<Gender>('M')
   const [clan, setClan] = useState('')
   const [city, setCity] = useState('')
+  const [fatherName, setFatherName] = useState('')
+  const [motherName, setMotherName] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -40,6 +42,8 @@ export function SignupPage() {
       password,
       claimPersonId: mode === 'claim' ? claimPersonId : undefined,
       newPerson: mode === 'new' ? { firstName, lastName, gender, clan: clan || undefined, city: city || undefined } : undefined,
+      fatherName: fatherName || undefined,
+      motherName: motherName || undefined,
     })
     if (!res.ok) setError(res.error ?? 'Erreur')
     else navigate('/onboarding', { replace: true })
@@ -59,6 +63,12 @@ export function SignupPage() {
           <Field label="Ton nom complet" value={name} onChange={setName} placeholder="Hervé Mballa" />
           <Field label="Email" value={email} onChange={setEmail} placeholder="ton@email.cm" />
           <Field label="Mot de passe" value={password} onChange={setPassword} type="password" placeholder="4 caractères min." />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Nom du père" value={fatherName} onChange={setFatherName} placeholder="ex. Joseph Mballa" />
+            <Field label="Nom de la mère" value={motherName} onChange={setMotherName} placeholder="ex. Rose Abena" />
+          </div>
+          <p className="-mt-1 mb-1 text-xs text-faint">Ils seront ajoutés à ton arbre et aideront à retrouver ta famille.</p>
 
           <div className="my-3 grid grid-cols-2 gap-2">
             <button onClick={() => setMode('claim')} className={`rounded-xl border px-2 py-2 text-sm font-medium ${mode === 'claim' ? 'border-sage bg-sage-soft text-sage' : 'border-line text-muted'}`}>Je suis dans l'arbre</button>
