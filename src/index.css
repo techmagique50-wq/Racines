@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* Active la variante dark via la classe .dark sur <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Tokens statiques (polices, rayons, animations) ───────────────────────── */
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: Fraunces, Georgia, "Times New Roman", serif;
+  --animate-fade-up: fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+}
+
+/* ── Tokens couleurs (dynamiques light/dark) ──────────────────────────────── */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-brand: var(--brand);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --color-terre: var(--terre);
+  --color-terre-soft: var(--terre-soft);
+}
+
+/* Clair */
+:root {
+  --bg: #f7f5f0; /* ivoire */
+  --card: #ffffff;
+  --ink: #222222;
+  --muted: #5b574f;
+  --faint: #9a968c;
+  --line: #e7e2d6;
+  --primary: #1f3a5f;
+  --primary-soft: #e8edf3;
+  --brand: #1f3a5f; /* surface bleu nuit (texte blanc dessus) */
+  --gold: #c8962e;
+  --gold-soft: #f6ecd6;
+  --sage: #2e7d6f;
+  --sage-soft: #e3f0ec;
+  --terre: #b5532a;
+  --terre-soft: #f6e6df;
+  color-scheme: light;
+}
+
+/* Sombre (ivoire chaleureux sur fond profond) */
+.dark {
+  --bg: #14161b;
+  --card: #1c1f26;
+  --ink: #ece8df;
+  --muted: #a7a299;
+  --faint: #6f6b62;
+  --line: #2c303a;
+  --primary: #7ea3d4; /* accent éclairci pour titres/liens en sombre */
+  --primary-soft: #20293a;
+  --brand: #2a4063; /* surface bleu nuit (reste foncée en sombre, texte blanc lisible) */
+  --gold: #d4a443;
+  --gold-soft: #2c2415;
+  --sage: #54b29f;
+  --sage-soft: #16271f;
+  --terre: #d97f54;
+  --terre-soft: #2c1d16;
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; }
+
+input, select, textarea { font-family: inherit; color: var(--color-ink); background-color: transparent; }
+input::placeholder, textarea::placeholder { color: var(--color-faint); }
+select option { background: var(--color-card); color: var(--color-ink); }
+
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; border-radius: 6px; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 99px; }
+
+/* Liens du graphe */
+.link-confirmed { stroke: #c9c2b2; }
+.link-pending { stroke: #ddd6c6; stroke-dasharray: 5 5; }
+.dark .link-confirmed { stroke: #3a3f4a; }
+.dark .link-pending { stroke: #2c303a; }
+
+/* Motif géométrique discret (séparateur patrimonial) */
+.motif {
+  height: 6px;
+  background-image: repeating-linear-gradient(-45deg, var(--color-gold) 0 6px, transparent 6px 14px);
+  opacity: 0.5;
+}
+
+/* Squelette de chargement */
+.skeleton {
+  background: linear-gradient(90deg, var(--color-line) 25%, var(--color-bg) 37%, var(--color-line) 63%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+  border-radius: 0.75rem;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

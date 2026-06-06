@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#1F3A5F"/>
+  <!-- arbre / racines : tronc + branches (haut) + racines (bas) -->
+  <g stroke="#C8962E" stroke-width="16" stroke-linecap="round" fill="none">
+    <path d="M256 300 L256 212"/>
+    <!-- branches -->
+    <path d="M256 226 C 210 196, 196 176, 188 150"/>
+    <path d="M256 226 C 302 196, 316 176, 324 150"/>
+    <path d="M256 246 C 224 230, 210 214, 204 196"/>
+    <path d="M256 246 C 288 230, 302 214, 308 196"/>
+    <!-- racines -->
+    <path d="M256 300 C 220 322, 204 344, 196 372"/>
+    <path d="M256 300 C 292 322, 308 344, 316 372"/>
+    <path d="M256 300 L256 372"/>
+  </g>
+  <!-- feuilles / membres -->
+  <g fill="#2E7D6F">
+    <circle cx="188" cy="146" r="20"/>
+    <circle cx="324" cy="146" r="20"/>
+    <circle cx="204" cy="192" r="15"/>
+    <circle cx="308" cy="192" r="15"/>
+  </g>
+  <!-- ancêtre-pivot doré au sommet -->
+  <circle cx="256" cy="170" r="26" fill="#C8962E"/>
+  <!-- nœuds racines -->
+  <g fill="#F7F5F0">
+    <circle cx="196" cy="376" r="11"/>
+    <circle cx="256" cy="378" r="11"/>
+    <circle cx="316" cy="376" r="11"/>
+  </g>
+</svg>
