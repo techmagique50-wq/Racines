@@ -9,10 +9,30 @@ L'app est buildée dans `dist/`. Voici comment obtenir une **URL publique HTTPS*
 4. Tu obtiens une **URL HTTPS** (`https://xxxx.netlify.app`) — partageable et **installable** (PWA).
    - Sans compte : déploiement temporaire. Avec un compte gratuit : URL conservée + renommable.
 
-## ✅ Option 2 — Vercel
-1. Pousse le dossier `racines/` sur GitHub.
-2. vercel.com → New Project → importe le repo → framework **Vite** (build `npm run build`, output `dist`).
-3. URL HTTPS permanente + redéploiement auto à chaque push.
+## ✅ Option 2 — Vercel (URL permanente) — RECOMMANDÉ
+Le projet est **déjà prêt** : dépôt git initialisé + commit fait + [`vercel.json`](vercel.json) configuré (framework Vite, output `dist`, SPA fallback).
+
+### Chemin A — Vercel CLI (le plus rapide pour être EN LIGNE)
+```bash
+npm i -g vercel
+cd "racines"
+vercel            # 1ʳᵉ fois : connexion (s'ouvre dans le navigateur), puis Entrée à chaque question
+vercel --prod     # publie en production → te donne l'URL https://racines-xxx.vercel.app
+```
+
+### Chemin B — GitHub + tableau de bord Vercel (redéploiement auto à chaque push)
+```bash
+cd "racines"
+git branch -M main
+git remote add origin https://github.com/<TON-COMPTE>/racines.git
+git push -u origin main
+```
+Puis **vercel.com → Add New → Project → importe `racines`** → Deploy (la config est auto-détectée).
+Ensuite, chaque `git push` redéploie tout seul.
+
+> 💡 **Avant de déployer**, si tu veux recevoir les avis directement : mets ton numéro/email dans
+> [`src/components/Feedback.tsx`](src/components/Feedback.tsx) (`OWNER_WHATSAPP`, `OWNER_EMAIL`).
+> Tu peux aussi le faire plus tard et redéployer.
 
 ## 📥 Recevoir les avis (bouton « Avis » intégré)
 Un bouton **« Avis »** (en bas à gauche) ouvre une fenêtre : **note ★ + message**, envoyé par **WhatsApp**, **email** ou **copier-coller**.
