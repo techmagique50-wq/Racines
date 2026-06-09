@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { UserPlus, TreePine } from 'lucide-react'
 import { useStore } from '../store'
+import { isSupabaseConfigured } from '../lib/supabase'
 import type { Gender } from '../family/types'
 
 export function SignupPage() {
@@ -11,7 +12,8 @@ export function SignupPage() {
   const theme = useStore((s) => s.theme)
   const navigate = useNavigate()
 
-  const [mode, setMode] = useState<'claim' | 'new'>('claim')
+  const [mode, setMode] = useState<'claim' | 'new'>(isSupabaseConfigured ? 'new' : 'claim')
+  const [busy, setBusy] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +23,8 @@ export function SignupPage() {
   const [gender, setGender] = useState<Gender>('M')
   const [clan, setClan] = useState('')
   const [city, setCity] = useState('')
+  const [fatherName, setFatherName] = useState('')
+  const [motherName, setMotherName] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -32,17 +36,21 @@ export function SignupPage() {
     return persons.filter((p) => p.state === 'vivant' && !taken.has(p.id)).sort((a, b) => a.firstName.localeCompare(b.firstName))
   }, [persons, accounts])
 
-  const submit = () => {
-    setError('')
-    const res = signup({
-      name: name || (mode === 'new' ? `${firstName} ${lastName}` : ''),
-      email,
-      password,
-      claimPersonId: mode === 'claim' ? claimPersonId : undefined,
-      newPerson: mode === 'new' ? { firstName, lastName, gender, clan: clan || undefined, city: city || undefined } : undefined,
-    })
-    if (!res.ok) setError(res.error ?? 'Erreur')
-    else navigate('/onboarding', { replace: true })
+  const submit = async () => {
+    setError(''); setBusy(true)
+    try {
+      const res = await signup({
+        name: name || (mode === 'new' ? `${firstName} ${lastName}` : ''),
+        email,
+        password,
+        claimPersonId: mode === 'claim' ? claimPersonId : undefined,
+        newPerson: mode === 'new' ? { firstName, lastName, gender, clan: clan || undefined, city: city || undefined } : undefined,
+        fatherName: fatherName || undefined,
+        motherName: motherName || undefined,
+      })
+      if (!res.ok) setError(res.error ?? 'Erreur')
+      else navigate(isSupabaseConfigured ? '/' : '/onboarding', { replace: true })
+    } finally { setBusy(false) }
   }
 
   return (
@@ -56,14 +64,22 @@ export function SignupPage() {
         <div className="rounded-2xl border border-line bg-card p-5">
           {error && <p className="mb-3 rounded-lg bg-terre-soft px-3 py-2 text-sm text-terre">{error}</p>}
 
-          <Field label="Ton nom complet" value={name} onChange={setName} placeholder="Hervé Mballa" />
+          {!isSupabaseConfigured && <Field label="Ton nom complet" value={name} onChange={setName} placeholder="Hervé Mballa" />}
           <Field label="Email" value={email} onChange={setEmail} placeholder="ton@email.cm" />
-          <Field label="Mot de passe" value={password} onChange={setPassword} type="password" placeholder="4 caractères min." />
+          <Field label="Mot de passe" value={password} onChange={setPassword} type="password" placeholder={isSupabaseConfigured ? '6 caractères min.' : '4 caractères min.'} />
 
-          <div className="my-3 grid grid-cols-2 gap-2">
-            <button onClick={() => setMode('claim')} className={`rounded-xl border px-2 py-2 text-sm font-medium ${mode === 'claim' ? 'border-sage bg-sage-soft text-sage' : 'border-line text-muted'}`}>Je suis dans l'arbre</button>
-            <button onClick={() => setMode('new')} className={`rounded-xl border px-2 py-2 text-sm font-medium ${mode === 'new' ? 'border-sage bg-sage-soft text-sage' : 'border-line text-muted'}`}>Créer mon profil</button>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Nom du père" value={fatherName} onChange={setFatherName} placeholder="ex. Joseph Mballa" />
+            <Field label="Nom de la mère" value={motherName} onChange={setMotherName} placeholder="ex. Rose Abena" />
           </div>
+          <p className="-mt-1 mb-1 text-xs text-faint">Ils seront ajoutés à ton arbre et aideront à retrouver ta famille.</p>
+
+          {!isSupabaseConfigured && (
+            <div className="my-3 grid grid-cols-2 gap-2">
+              <button onClick={() => setMode('claim')} className={`rounded-xl border px-2 py-2 text-sm font-medium ${mode === 'claim' ? 'border-sage bg-sage-soft text-sage' : 'border-line text-muted'}`}>Je suis dans l'arbre</button>
+              <button onClick={() => setMode('new')} className={`rounded-xl border px-2 py-2 text-sm font-medium ${mode === 'new' ? 'border-sage bg-sage-soft text-sage' : 'border-line text-muted'}`}>Créer mon profil</button>
+            </div>
+          )}
 
           {mode === 'claim' ? (
             <label className="block">
@@ -93,8 +109,8 @@ export function SignupPage() {
             </div>
           )}
 
-          <button onClick={submit} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gold py-3 font-semibold text-white transition active:scale-[0.98]">
-            <UserPlus size={18} /> Créer mon compte
+          <button onClick={submit} disabled={busy} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gold py-3 font-semibold text-white transition active:scale-[0.98] disabled:opacity-50">
+            <UserPlus size={18} /> {busy ? 'Création…' : 'Créer mon compte'}
           </button>
           <p className="mt-4 text-center text-sm text-muted">Déjà inscrit ? <Link to="/login" className="font-semibold text-sage">Se connecter</Link></p>
         </div>

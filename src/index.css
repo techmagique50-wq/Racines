@@ -127,3 +127,13 @@ select option { background: var(--color-card); color: var(--color-ink); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ── Impression (arbre généalogique) ──────────────────────────────────────── */
+@media print {
+  body { background: #fff; }
+  /* La coque app perd ses marges/ombres/rayons pour imprimer pleine page. */
+  body > #root > div { max-width: none !important; margin: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+  main { padding: 0 !important; }
+  .link-confirmed { stroke: #b9b3a3 !important; }
+  .link-pending { stroke: #d2ccbc !important; }
+}

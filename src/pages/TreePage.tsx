@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ZoomIn, ZoomOut, Maximize } from 'lucide-react'
+import { ZoomIn, ZoomOut, Maximize, Printer, FileDown } from 'lucide-react'
 import { useStore } from '../store'
-import { generationLevels } from '../family/engine'
+import { familyScope, generationLevels } from '../family/engine'
+import { downloadGedcom } from '../family/gedcom'
 import { PageTitle } from '../ui/ui'
 
 const NODE_W = 138
@@ -24,12 +25,20 @@ export function TreePage() {
   const graph = useStore((s) => s.graph)()
   const navigate = useNavigate()
 
+  // Périmètre de la famille : on n'affiche que la lignée + les conjoints
+  // (les belles-familles / « cousins de cousins » sont exclus).
+  const scope = useMemo(() => familyScope(graph, meId), [graph, meId])
+  const treePersons = useMemo(() => {
+    const inIt = persons.filter((p) => scope.blood.has(p.id) || scope.boundary.has(p.id))
+    return inIt.some((p) => p.id === meId) ? inIt : persons // garde-fou
+  }, [persons, scope, meId])
+
   const layout = useMemo(() => {
     const levels = generationLevels(graph)
     const order = new Map<string, number>()
     const visited = new Set<string>()
     let cursor = 0
-    const roots = persons
+    const roots = treePersons
       .filter((p) => (graph.parents.get(p.id) ?? []).length === 0)
       .sort((a, b) => (a.birthYear ?? 0) - (b.birthYear ?? 0))
       .map((p) => p.id)
@@ -50,10 +59,10 @@ export function TreePage() {
         .forEach(place)
     }
     roots.forEach(place)
-    persons.forEach((p) => place(p.id))
+    treePersons.forEach((p) => place(p.id))
 
     const byLevel = new Map<number, string[]>()
-    for (const p of persons) {
+    for (const p of treePersons) {
       const lvl = levels.get(p.id) ?? 0
       if (!byLevel.has(lvl)) byLevel.set(lvl, [])
       byLevel.get(lvl)!.push(p.id)
@@ -71,11 +80,29 @@ export function TreePage() {
     }
     const height = (byLevel.size - 1) * (NODE_H + V_GAP) + NODE_H + 60
     return { nodes, width: totalW, height }
-  }, [persons, graph])
+  }, [treePersons, graph])
 
   const [scale, setScale] = useState(0.7)
   const [tx, setTx] = useState(20)
   const [ty, setTy] = useState(0)
+  const [printing, setPrinting] = useState(false)
+  const fitScale = Math.min(1, 980 / Math.max(1, layout.width))
+
+  // Impression : on bascule en rendu « pleine page », on imprime, puis on restaure.
+  useEffect(() => {
+    if (!printing) return
+    const done = () => setPrinting(false)
+    window.addEventListener('afterprint', done)
+    const id = requestAnimationFrame(() => window.print())
+    return () => {
+      window.removeEventListener('afterprint', done)
+      cancelAnimationFrame(id)
+    }
+  }, [printing])
+
+  const clan = persons.find((p) => p.isPivot)?.lignage ?? persons[0]?.lastName ?? 'RACINES'
+  const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
   const drag = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null)
   const onDown = (e: React.PointerEvent) => {
     drag.current = { x: e.clientX, y: e.clientY, tx, ty }
@@ -95,28 +122,56 @@ export function TreePage() {
 
   return (
     <div>
-      <PageTitle title="L'arbre familial" subtitle="Calculé automatiquement. Touche une personne pour ouvrir son profil." />
+      <div className="flex flex-wrap items-start justify-between gap-2 print:hidden">
+        <PageTitle title="L'arbre familial" subtitle="Calculé automatiquement. Touche une personne pour ouvrir son profil." />
+        <div className="flex gap-2">
+          <button onClick={() => downloadGedcom(persons, filiations, unions, clan)} className="flex items-center gap-2 rounded-xl bg-bg px-3 py-2 text-sm font-semibold text-primary ring-1 ring-line transition hover:bg-card">
+            <FileDown size={16} /> Exporter (GEDCOM)
+          </button>
+          <button onClick={() => setPrinting(true)} className="flex items-center gap-2 rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110">
+            <Printer size={16} /> Imprimer
+          </button>
+        </div>
+      </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-bg" style={{ height: '70vh' }}>
-        <div className="absolute right-3 top-3 z-10 flex flex-col gap-1">
+      {/* En-tête visible uniquement à l'impression */}
+      <div className="mb-3 hidden border-b border-line pb-2 print:block">
+        <div className="text-xl font-bold text-primary" style={{ fontFamily: 'Fraunces, serif' }}>🌳 Famille {clan}</div>
+        <div className="text-xs text-muted">Arbre généalogique RACINES · imprimé le {today}</div>
+      </div>
+
+      <div
+        className={`relative overflow-hidden rounded-2xl border border-line bg-bg print:overflow-visible print:rounded-none print:border-0`}
+        style={{ height: printing ? 'auto' : '70vh' }}
+      >
+        <div className="absolute right-3 top-3 z-10 flex flex-col gap-1 print:hidden">
           <button onClick={() => setScale((s) => Math.min(2, s + 0.15))} className="rounded-lg bg-card p-2 shadow ring-1 ring-line"><ZoomIn size={18} /></button>
           <button onClick={() => setScale((s) => Math.max(0.3, s - 0.15))} className="rounded-lg bg-card p-2 shadow ring-1 ring-line"><ZoomOut size={18} /></button>
           <button onClick={reset} className="rounded-lg bg-card p-2 shadow ring-1 ring-line"><Maximize size={18} /></button>
         </div>
-        <div className="absolute left-3 top-3 z-10 space-y-1 rounded-lg bg-card/90 px-3 py-2 text-xs shadow ring-1 ring-line">
+        <div className="absolute left-3 top-3 z-10 space-y-1 rounded-lg bg-card/90 px-3 py-2 text-xs shadow ring-1 ring-line print:hidden">
           <div className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded-full bg-gold" /> ancêtre-pivot</div>
           <div className="flex items-center gap-2"><span className="text-terre">✦</span> en mémoire</div>
+          <div className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded border border-dashed border-sage/70" /> par alliance</div>
         </div>
 
-        <svg className="h-full w-full touch-none cursor-grab active:cursor-grabbing" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}>
-          <g transform={`translate(${tx},${ty}) scale(${scale})`}>
+        <svg
+          className={printing ? 'block' : 'h-full w-full touch-none cursor-grab active:cursor-grabbing'}
+          width={printing ? layout.width * fitScale + 40 : undefined}
+          height={printing ? layout.height * fitScale + 40 : undefined}
+          onPointerDown={onDown}
+          onPointerMove={onMove}
+          onPointerUp={onUp}
+          onPointerLeave={onUp}
+        >
+          <g transform={printing ? `translate(20,20) scale(${fitScale})` : `translate(${tx},${ty}) scale(${scale})`}>
             {unions.map((un) => {
               const a = layout.nodes.get(un.aId)
               const b = layout.nodes.get(un.bId)
               if (!a || !b) return null
               return <line key={un.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={un.status === 'confirmed' ? 'link-confirmed' : 'link-pending'} strokeWidth={2} />
             })}
-            {persons.map((child) => {
+            {treePersons.map((child) => {
               const cn = layout.nodes.get(child.id)
               if (!cn) return null
               const pf = filiations.filter((f) => f.childId === child.id)
@@ -128,11 +183,12 @@ export function TreePage() {
               const busY = (cn.y - NODE_H / 2 + midY + NODE_H / 2) / 2
               return <path key={`fil-${child.id}`} d={`M ${cn.x} ${cn.y - NODE_H / 2} L ${cn.x} ${busY} L ${midX} ${busY} L ${midX} ${midY + NODE_H / 2}`} fill="none" className={pending ? 'link-pending' : 'link-confirmed'} strokeWidth={2} />
             })}
-            {persons.map((p) => {
+            {treePersons.map((p) => {
               const n = layout.nodes.get(p.id)
               if (!n) return null
               const isMe = p.id === meId
               const memoire = p.state === 'memoire'
+              const boundary = scope.boundary.has(p.id) && !scope.blood.has(p.id)
               return (
                 <foreignObject key={p.id} x={n.x - NODE_W / 2} y={n.y - NODE_H / 2} width={NODE_W} height={NODE_H}>
                   <button
@@ -144,7 +200,9 @@ export function TreePage() {
                           ? 'border-gold bg-gold-soft'
                           : memoire
                             ? 'border-terre/30 bg-terre-soft'
-                            : 'border-line bg-card hover:border-sage'
+                            : boundary
+                              ? 'border-dashed border-sage/50 bg-card'
+                              : 'border-line bg-card hover:border-sage'
                     }`}
                   >
                     <span className="text-2xl leading-none">{p.avatar ?? '🧑🏾'}</span>
@@ -154,7 +212,7 @@ export function TreePage() {
                       </span>
                       <span className="block truncate text-[10px] text-muted">
                         {p.lastName}
-                        {p.birthYear ? ` · ${p.birthYear}${p.deathYear ? `–${p.deathYear}` : ''}` : ''}
+                        {boundary ? ' · alliance' : p.birthYear ? ` · ${p.birthYear}${p.deathYear ? `–${p.deathYear}` : ''}` : ''}
                       </span>
                     </span>
                   </button>
@@ -164,7 +222,7 @@ export function TreePage() {
           </g>
         </svg>
       </div>
-      <p className="mt-3 text-xs text-faint">Glisse pour te déplacer · molette/boutons pour zoomer · « toi » en bleu, pivot en or, défunts en terre cuite.</p>
+      <p className="mt-3 text-xs text-faint print:hidden">Glisse pour te déplacer · molette/boutons pour zoomer · « toi » en bleu, pivot en or, défunts en terre cuite. Exporte en GEDCOM pour Gramps, Ancestry ou MyHeritage.</p>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Network, GitCompareArrows, Users, Sparkles, Quote, TreePine, UserPlus, Share2, ArrowRight } from 'lucide-react'
 import { useMe, useStore } from '../store'
 import { generationLevels, suggestMatches } from '../family/engine'
+import { completeness } from '../family/profile'
 import { inviteMessage, whatsappLink } from '../lib/invite'
 import { Avatar, timeAgo } from '../ui/ui'
 
@@ -25,7 +26,9 @@ export function HomePage() {
   const now = (tributes.length ? Math.max(...tributes.map((t) => t.createdAt)) : 0) + 60_000
   const pid = (id: string) => persons.find((p) => p.id === id)
 
+  const guest = useStore((s) => s.guest)
   const hasParents = (graph.parents.get(me.id) ?? []).length > 0
+  const profile = completeness(me, (graph.parents.get(me.id) ?? []).length)
   // cases vides : membres à qui il manque un parent (on pourra inviter / compléter)
   const gaps = useMemo(
     () =>
@@ -78,6 +81,20 @@ export function HomePage() {
             <div className="text-xs text-muted">Ajoute tes parents et grands-parents — RACINES trouvera ensuite tes proches.</div>
           </div>
           <ArrowRight size={18} className="text-gold" />
+        </Link>
+      )}
+
+      {/* Complétude du profil */}
+      {!guest && profile.pct < 100 && (
+        <Link to="/profil/editer" className="mt-4 block rounded-2xl border border-line bg-card p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-semibold text-ink">Ton profil est rempli à {profile.pct}%</span>
+            <span className="text-sage">Compléter →</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-bg">
+            <div className="h-full rounded-full bg-sage transition-all" style={{ width: `${profile.pct}%` }} />
+          </div>
+          {profile.missing.length > 0 && <p className="mt-2 text-xs text-faint">Il manque : {profile.missing.slice(0, 3).join(', ')}…</p>}
         </Link>
       )}
 

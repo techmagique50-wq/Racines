@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { CalendarHeart, MapPin, Plus, Users, X } from 'lucide-react'
+import { CalendarHeart, MapPin, Plus, Users, X, Trash2 } from 'lucide-react'
 import { useStore } from '../store'
 import { EVENT_KIND, type EventKind, type FamilyEvent } from '../family/types'
-import { Avatar, PageTitle } from '../ui/ui'
+import { Avatar, PageTitle, useGate } from '../ui/ui'
 
 export function EventsPage() {
   const events = useStore((s) => s.events)
+  const { gate } = useGate()
   const [open, setOpen] = useState(false)
   const sorted = useMemo(() => [...events].sort((a, b) => a.date.localeCompare(b.date)), [events])
 
@@ -13,7 +14,7 @@ export function EventsPage() {
     <div className="mx-auto max-w-xl">
       <div className="mb-4 flex items-start justify-between">
         <PageTitle title="Événements" subtitle="Mariages, deuils, naissances, retrouvailles…" />
-        <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 rounded-xl bg-gold px-3 py-2 text-sm font-semibold text-white"><Plus size={16} /> Créer</button>
+        <button onClick={() => gate(() => setOpen(true))} className="flex items-center gap-1.5 rounded-xl bg-gold px-3 py-2 text-sm font-semibold text-white"><Plus size={16} /> Créer</button>
       </div>
 
       <div className="space-y-4">
@@ -30,6 +31,9 @@ function EventCard({ event }: { event: FamilyEvent }) {
   const meId = useStore((s) => s.meId)
   const persons = useStore((s) => s.persons)
   const rsvp = useStore((s) => s.toggleRsvp)
+  const deleteEvent = useStore((s) => s.deleteEvent)
+  const isGardien = persons.find((p) => p.id === meId)?.role === 'gardien'
+  const { gate } = useGate()
   const k = EVENT_KIND[event.kind]
   const going = event.participants.includes(meId)
   const date = new Date(event.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -46,6 +50,15 @@ function EventCard({ event }: { event: FamilyEvent }) {
             {event.place && <span className="flex items-center gap-1.5"><MapPin size={15} /> {event.place}</span>}
           </div>
         </div>
+        {isGardien && (
+          <button
+            onClick={() => { if (confirm(`Supprimer l’événement « ${event.title} » ? (action de modération, tracée)`)) deleteEvent(event.id) }}
+            title="Modérer : supprimer"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-faint transition hover:bg-terre/10 hover:text-terre"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
       {event.description && <p className="mt-3 text-sm text-muted">{event.description}</p>}
       <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
@@ -58,7 +71,7 @@ function EventCard({ event }: { event: FamilyEvent }) {
           </div>
           <span>{event.participants.length}</span>
         </div>
-        <button onClick={() => rsvp(event.id)} className={`rounded-xl px-4 py-1.5 text-sm font-semibold ${going ? 'bg-sage-soft text-sage' : 'bg-sage text-white'}`}>
+        <button onClick={() => gate(() => rsvp(event.id))} className={`rounded-xl px-4 py-1.5 text-sm font-semibold ${going ? 'bg-sage-soft text-sage' : 'bg-sage text-white'}`}>
           {going ? 'Je participe ✓' : 'Participer'}
         </button>
       </div>

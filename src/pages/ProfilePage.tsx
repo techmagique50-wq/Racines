@@ -10,7 +10,7 @@ import {
   childrenOf, coSpousesOf, describeRelationship, parentsOf, siblingsOf, spousesOf, suggestMatches,
 } from '../family/engine'
 import { ROLE_LABEL, type Person } from '../family/types'
-import { Avatar, Badge, PersonChip, timeAgo } from '../ui/ui'
+import { Avatar, Badge, PersonChip, timeAgo, useGate } from '../ui/ui'
 
 export function ProfilePage() {
   const { id = '' } = useParams()
@@ -26,6 +26,9 @@ export function ProfilePage() {
   const confirmUnion = useStore((s) => s.confirmUnion)
   const addTribute = useStore((s) => s.addTribute)
   const startDirect = useStore((s) => s.startDirect)
+  const setRole = useStore((s) => s.setRole)
+  const { gate } = useGate()
+  const isGardien = me?.role === 'gardien'
 
   const person = persons.find((p) => p.id === id)
   const suggestions = useMemo(() => (person ? suggestMatches(graph, person.id) : []), [graph, person])
@@ -95,7 +98,7 @@ export function ProfilePage() {
 
           <div className="mt-4 flex flex-wrap gap-2">
             {!isMe && !memoire && (
-              <button onClick={() => navigate(`/messages/${startDirect(person.id)}`)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-sage px-3 py-2 text-sm font-semibold text-white">
+              <button onClick={() => gate(() => navigate(`/messages/${startDirect(person.id)}`))} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-sage px-3 py-2 text-sm font-semibold text-white">
                 <MessageCircle size={16} /> Discuter
               </button>
             )}
@@ -121,6 +124,18 @@ export function ProfilePage() {
               </a>
             )}
           </div>
+
+          {/* Modération : gestion du rôle (réservée aux gardiens) */}
+          {isGardien && !isMe && !memoire && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-gold/30 bg-gold-soft/40 px-3 py-2">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-gold"><ShieldCheck size={14} /> Modération</span>
+              {person.role === 'gardien' ? (
+                <button onClick={() => setRole(person.id, 'membre')} className="rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-primary ring-1 ring-line">Retirer le rôle de gardien</button>
+              ) : (
+                <button onClick={() => setRole(person.id, 'gardien')} className="rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-white">Nommer gardien</button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -136,7 +151,7 @@ export function ProfilePage() {
               return (
                 <div key={f.id} className="flex items-center justify-between rounded-xl bg-card px-3 py-2">
                   <span className="text-sm text-muted">{person.firstName} serait <b>{role}</b> {other?.firstName} {other?.lastName}</span>
-                  <button onClick={() => confirmFiliation(f.id)} className="flex items-center gap-1 rounded-lg bg-sage px-3 py-1.5 text-xs font-semibold text-white"><CheckCircle2 size={14} /> Confirmer</button>
+                  <button onClick={() => gate(() => confirmFiliation(f.id))} className="flex items-center gap-1 rounded-lg bg-sage px-3 py-1.5 text-xs font-semibold text-white"><CheckCircle2 size={14} /> Confirmer</button>
                 </div>
               )
             })}
@@ -145,7 +160,7 @@ export function ProfilePage() {
               return (
                 <div key={u.id} className="flex items-center justify-between rounded-xl bg-card px-3 py-2">
                   <span className="text-sm text-muted">Union avec {other?.firstName} {other?.lastName}</span>
-                  <button onClick={() => confirmUnion(u.id)} className="flex items-center gap-1 rounded-lg bg-sage px-3 py-1.5 text-xs font-semibold text-white"><CheckCircle2 size={14} /> Confirmer</button>
+                  <button onClick={() => gate(() => confirmUnion(u.id))} className="flex items-center gap-1 rounded-lg bg-sage px-3 py-1.5 text-xs font-semibold text-white"><CheckCircle2 size={14} /> Confirmer</button>
                 </div>
               )
             })}
@@ -167,7 +182,7 @@ export function ProfilePage() {
             ))}
             {!personTributes.length && <p className="text-sm text-muted">Sois le premier à partager un souvenir.</p>}
           </div>
-          <TributeForm onAdd={(text) => addTribute(person.id, 'temoignage', usersName(persons, meId), text)} />
+          <TributeForm onAdd={(text) => gate(() => addTribute(person.id, 'temoignage', usersName(persons, meId), text))} />
         </section>
       )}
 

@@ -1,19 +1,23 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Check, Plus, Sparkles, UserPlus } from 'lucide-react'
 import { useMe, useStore } from '../store'
 import { parentsOf } from '../family/engine'
 import type { Gender } from '../family/types'
 import { Avatar, PageTitle } from '../ui/ui'
+import { NameSuggest } from '../components/NameSuggest'
 
 export function OnboardingPage() {
   const me = useMe()
   const graph = useStore((s) => s.graph)()
+  const guest = useStore((s) => s.guest)
   const navigate = useNavigate()
 
   const myParents = parentsOf(graph, me.id)
   const father = myParents.find((p) => p.gender === 'M')
   const mother = myParents.find((p) => p.gender === 'F')
+
+  if (guest) return <Navigate to="/signup" replace />
 
   return (
     <div className="mx-auto max-w-xl">
@@ -95,6 +99,7 @@ function AddSpouse({ grandfatherId }: { grandfatherId: string }) {
 
 function AddForm({ label, relativeOf, type, gender, defaultLast, small }: { label: string; relativeOf: string; type: 'parent' | 'spouse'; gender: Gender; defaultLast?: string; small?: boolean }) {
   const addRelative = useStore((s) => s.addRelative)
+  const linkExisting = useStore((s) => s.linkExisting)
   const [open, setOpen] = useState(false)
   const [first, setFirst] = useState('')
   const [last, setLast] = useState(defaultLast ?? '')
@@ -121,6 +126,12 @@ function AddForm({ label, relativeOf, type, gender, defaultLast, small }: { labe
         <input autoFocus value={first} onChange={(e) => setFirst(e.target.value)} placeholder="Prénom" className="rounded-lg border border-line px-2 py-1.5 text-sm" />
         <input value={last} onChange={(e) => setLast(e.target.value)} placeholder="Nom" className="rounded-lg border border-line px-2 py-1.5 text-sm" />
       </div>
+      <NameSuggest
+        firstName={first}
+        lastName={last}
+        excludeIds={[relativeOf]}
+        onPick={(p) => { linkExisting(p.id, { type, relativeOf, confirmed: true }); setOpen(false); setFirst(''); setLast(defaultLast ?? '') }}
+      />
       <div className="mt-2 flex gap-2">
         <button onClick={add} disabled={!first.trim()} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-sage py-1.5 text-sm font-semibold text-white disabled:opacity-40"><UserPlus size={14} /> Ajouter</button>
         <button onClick={() => setOpen(false)} className="rounded-lg px-3 py-1.5 text-sm text-muted">Annuler</button>

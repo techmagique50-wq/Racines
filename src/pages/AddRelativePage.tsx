@@ -1,9 +1,11 @@
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Info, UserPlus } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { AlertTriangle, Info, UserPlus } from 'lucide-react'
 import { useStore } from '../store'
+import { familyScope, isBoundary, spousesOf } from '../family/engine'
 import type { Gender, LifeState } from '../family/types'
 import { Avatar, PageTitle } from '../ui/ui'
+import { NameSuggest } from '../components/NameSuggest'
 
 type RelType = 'parent' | 'child' | 'spouse'
 const REL_LABEL: Record<RelType, string> = { parent: 'le parent', child: "l'enfant", spouse: 'le/la conjoint·e' }
@@ -13,7 +15,9 @@ export function AddRelativePage() {
   const navigate = useNavigate()
   const persons = useStore((s) => s.persons)
   const meId = useStore((s) => s.meId)
+  const graph = useStore((s) => s.graph)()
   const addRelative = useStore((s) => s.addRelative)
+  const linkExisting = useStore((s) => s.linkExisting)
 
   const [relativeOf, setRelativeOf] = useState(params.get('relativeOf') ?? meId)
   const [type, setType] = useState<RelType>('parent')
@@ -27,10 +31,17 @@ export function AddRelativePage() {
   const [city, setCity] = useState('')
   const [phone, setPhone] = useState('')
 
+  const guest = useStore((s) => s.guest)
   const anchor = persons.find((p) => p.id === relativeOf)
 
+  // Périmètre : on ne construit pas la famille à partir d'un conjoint entré par
+  // alliance (sa belle-famille appartient à une autre lignée).
+  const scope = useMemo(() => familyScope(graph, meId), [graph, meId])
+  const anchorIsBoundary = relativeOf ? isBoundary(scope, relativeOf) : false
+  const bloodSpouse = anchor ? spousesOf(graph, anchor.id).find((s) => scope.blood.has(s.id)) : undefined
+
   const submit = () => {
-    if (!firstName.trim() || !lastName.trim()) return
+    if (anchorIsBoundary || !firstName.trim() || !lastName.trim()) return
     const id = addRelative(
       {
         firstName: firstName.trim(),
@@ -49,6 +60,8 @@ export function AddRelativePage() {
     )
     navigate(`/membre/${id}`)
   }
+
+  if (guest) return <Navigate to="/signup" replace />
 
   return (
     <div className="mx-auto max-w-xl">
@@ -70,15 +83,31 @@ export function AddRelativePage() {
           </select>
         </div>
 
-        <label className="mt-4 block text-xs font-medium text-muted">La nouvelle personne est…</label>
-        <div className="mt-1 grid grid-cols-3 gap-2">
-          {(['parent', 'child', 'spouse'] as RelType[]).map((t) => (
-            <button key={t} onClick={() => setType(t)} className={`rounded-xl border px-2 py-2 text-sm font-medium ${type === t ? 'border-sage bg-sage-soft text-sage' : 'border-line text-muted'}`}>
-              {REL_LABEL[t]}
-            </button>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-faint">{firstName || 'La personne'} sera {REL_LABEL[type]} de {anchor?.firstName}.</p>
+        {anchorIsBoundary ? (
+          <div className="mt-3 rounded-xl border border-terre/40 bg-terre-soft/50 p-3 text-sm">
+            <div className="flex items-center gap-1.5 font-semibold text-terre"><AlertTriangle size={15} /> Personne entrée par alliance</div>
+            <p className="mt-1 text-muted">
+              <b className="text-ink">{anchor?.firstName} {anchor?.lastName}</b> fait partie de la famille <b>par alliance</b> (belle-famille). On ne construit pas sa lignée ici : elle appartient à une autre famille.
+            </p>
+            {bloodSpouse && (
+              <button onClick={() => setRelativeOf(bloodSpouse.id)} className="mt-2 rounded-lg bg-sage px-3 py-1.5 text-xs font-semibold text-white">
+                Rattacher plutôt à {bloodSpouse.firstName} {bloodSpouse.lastName} (de la lignée)
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <label className="mt-4 block text-xs font-medium text-muted">La nouvelle personne est…</label>
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {(['parent', 'child', 'spouse'] as RelType[]).map((t) => (
+                <button key={t} onClick={() => setType(t)} className={`rounded-xl border px-2 py-2 text-sm font-medium ${type === t ? 'border-sage bg-sage-soft text-sage' : 'border-line text-muted'}`}>
+                  {REL_LABEL[t]}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-faint">{firstName || 'La personne'} sera {REL_LABEL[type]} de {anchor?.firstName}.</p>
+          </>
+        )}
       </div>
 
       <div className="mt-4 space-y-3 rounded-2xl border border-line bg-card p-4">
@@ -86,6 +115,12 @@ export function AddRelativePage() {
           <Field label="Prénom *" value={firstName} onChange={setFirstName} />
           <Field label="Nom *" value={lastName} onChange={setLastName} />
         </div>
+        <NameSuggest
+          firstName={firstName}
+          lastName={lastName}
+          excludeIds={[relativeOf]}
+          onPick={(p) => { if (anchorIsBoundary) return; linkExisting(p.id, { type, relativeOf }); navigate(`/membre/${p.id}`) }}
+        />
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">Sexe</label>
@@ -115,7 +150,7 @@ export function AddRelativePage() {
         {state === 'vivant' && <Field label="Téléphone (WhatsApp)" value={phone} onChange={setPhone} placeholder="+237…" />}
       </div>
 
-      <button onClick={submit} disabled={!firstName.trim() || !lastName.trim()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gold px-4 py-3 font-semibold text-white transition hover:brightness-95 disabled:opacity-40">
+      <button onClick={submit} disabled={anchorIsBoundary || !firstName.trim() || !lastName.trim()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gold px-4 py-3 font-semibold text-white transition hover:brightness-95 disabled:opacity-40">
         <UserPlus size={18} /> Ajouter (lien en attente)
       </button>
     </div>
