@@ -120,9 +120,15 @@ function Shell({
           <span className="flex items-center gap-2 text-lg font-bold" style={{ fontFamily: 'Fraunces, serif' }}>
             <TreePine size={20} className="text-gold" /> RACINES
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <ThemeBtn className="text-white hover:bg-white/15" />
-            {me}
+            {isGuest ? (
+              <NavLink to="/signup" className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold px-3 py-1.5 text-sm font-semibold text-white">
+                <UserPlus size={15} /> Créer un compte
+              </NavLink>
+            ) : (
+              me
+            )}
           </div>
         </div>
         <div className="motif" />
