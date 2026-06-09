@@ -36,12 +36,14 @@ export function Feedback() {
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-20 left-4 z-30 flex h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-black/20 transition active:scale-95 md:bottom-4"
-      >
-        <MessageSquareHeart size={18} /> Avis
-      </button>
+      <div className="pointer-events-none fixed bottom-20 left-1/2 z-30 w-full max-w-md -translate-x-1/2 px-4 print:hidden">
+        <button
+          onClick={() => setOpen(true)}
+          className="pointer-events-auto mr-auto flex h-12 w-fit items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-white shadow-lg shadow-black/20 transition active:scale-95"
+        >
+          <MessageSquareHeart size={18} /> Avis
+        </button>
+      </div>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setOpen(false)}>
