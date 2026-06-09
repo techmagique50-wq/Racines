@@ -26,7 +26,9 @@ export function ProfilePage() {
   const confirmUnion = useStore((s) => s.confirmUnion)
   const addTribute = useStore((s) => s.addTribute)
   const startDirect = useStore((s) => s.startDirect)
+  const setRole = useStore((s) => s.setRole)
   const { gate } = useGate()
+  const isGardien = me?.role === 'gardien'
 
   const person = persons.find((p) => p.id === id)
   const suggestions = useMemo(() => (person ? suggestMatches(graph, person.id) : []), [graph, person])
@@ -122,6 +124,18 @@ export function ProfilePage() {
               </a>
             )}
           </div>
+
+          {/* Modération : gestion du rôle (réservée aux gardiens) */}
+          {isGardien && !isMe && !memoire && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-gold/30 bg-gold-soft/40 px-3 py-2">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-gold"><ShieldCheck size={14} /> Modération</span>
+              {person.role === 'gardien' ? (
+                <button onClick={() => setRole(person.id, 'membre')} className="rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-primary ring-1 ring-line">Retirer le rôle de gardien</button>
+              ) : (
+                <button onClick={() => setRole(person.id, 'gardien')} className="rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-white">Nommer gardien</button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

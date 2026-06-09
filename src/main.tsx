@@ -17,6 +17,7 @@ import { MessagesPage } from './pages/MessagesPage.tsx'
 import { DemandesPage } from './pages/DemandesPage.tsx'
 import { OnboardingPage } from './pages/OnboardingPage.tsx'
 import { EditProfilePage } from './pages/EditProfilePage.tsx'
+import { DiasporaPage } from './pages/DiasporaPage.tsx'
 
 const router = createHashRouter([
   { path: '/login', element: <LoginPage /> },
@@ -31,6 +32,7 @@ const router = createHashRouter([
       { path: 'lien', element: <LinkFinderPage /> },
       { path: 'membres', element: <DirectoryPage /> },
       { path: 'membre/:id', element: <ProfilePage /> },
+      { path: 'diaspora', element: <DiasporaPage /> },
       { path: 'evenements', element: <EventsPage /> },
       { path: 'demandes', element: <DemandesPage /> },
       { path: 'messages', element: <MessagesPage /> },

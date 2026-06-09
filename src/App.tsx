@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home, Network, GitCompareArrows, Users, UserPlus, TreePine, Moon, Sun,
-  Newspaper, MessageCircle, CalendarHeart, LogOut, UserCheck,
+  Newspaper, MessageCircle, CalendarHeart, LogOut, UserCheck, Globe2, Loader2,
 } from 'lucide-react'
 import { useAccount, useMe, useStore } from './store'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { Avatar } from './ui/ui'
 import { Feedback } from './components/Feedback'
 
@@ -14,6 +15,7 @@ const nav = [
   { to: '/arbre', label: 'Arbre', icon: Network, end: false, bottom: true },
   { to: '/lien', label: 'Lien', icon: GitCompareArrows, end: false, bottom: false },
   { to: '/membres', label: 'Membres', icon: Users, end: false, bottom: false },
+  { to: '/diaspora', label: 'Diaspora', icon: Globe2, end: false, bottom: false },
   { to: '/evenements', label: 'Événements', icon: CalendarHeart, end: false, bottom: false },
   { to: '/demandes', label: 'Demandes', icon: UserCheck, end: false, bottom: false },
   { to: '/messages', label: 'Messages', icon: MessageCircle, end: false, bottom: true },
@@ -29,15 +31,29 @@ export default function App() {
   const logout = useStore((s) => s.logout)
   const guest = useStore((s) => s.guest)
   const enterGuest = useStore((s) => s.enterGuest)
+  const bootstrap = useStore((s) => s.bootstrap)
+  const hydrate = useStore((s) => s.hydrate)
+  const hydrated = useStore((s) => s.hydrated)
+  const meId = useStore((s) => s.meId)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 
-  // Entrée directe : pas de compte → on explore en visiteur, sans écran de connexion.
+  // Démarrage : vérifie la session Supabase (mode réel) ou active le mode démo.
+  useEffect(() => { bootstrap() }, [bootstrap])
+
+  // Mode démo seulement : pas de compte → exploration visiteur directe.
   useEffect(() => {
-    if (!account && !guest) enterGuest()
+    if (!isSupabaseConfigured && !account && !guest) enterGuest()
   }, [account, guest, enterGuest])
+
+  // Mode réel : re-hydrate à chaque changement de session (connexion/déconnexion).
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return
+    const { data } = supabase.auth.onAuthStateChange(() => { hydrate() })
+    return () => data.subscription.unsubscribe()
+  }, [hydrate])
 
   const ThemeBtn = ({ className = '' }: { className?: string }) => (
     <button onClick={toggleTheme} aria-label="Changer de thème" className={`grid h-9 w-9 place-items-center rounded-full transition active:scale-90 ${className}`}>
@@ -45,7 +61,15 @@ export default function App() {
     </button>
   )
 
-  if (!account && !guest) return null // bref, le temps que le mode visiteur s'active
+  // Mode réel (Supabase)
+  if (isSupabaseConfigured) {
+    if (!hydrated) return <div className="grid h-full place-items-center text-faint"><Loader2 className="animate-spin" /></div>
+    if (!meId) return <Navigate to="/login" replace />
+    return <Shell me={<MeBlock />} themeBtn={ThemeBtn} loc={loc} isGuest={false} onLogout={() => { logout(); navigate('/login') }} />
+  }
+
+  // Mode démo (local)
+  if (!account && !guest) return null
   return <Shell me={<MeBlock />} themeBtn={ThemeBtn} loc={loc} isGuest={!account} onLogout={() => { logout(); navigate('/login') }} />
 }
 
@@ -91,7 +115,7 @@ function Shell({
   return (
     <div className="mx-auto flex min-h-full max-w-5xl flex-col bg-card md:my-4 md:flex-row md:overflow-hidden md:rounded-[1.75rem] md:shadow-xl md:shadow-black/5">
       {/* Header mobile */}
-      <header className="sticky top-0 z-20 bg-brand text-white md:hidden">
+      <header className="sticky top-0 z-20 bg-brand text-white md:hidden print:hidden">
         <div className="flex h-14 items-center justify-between px-4">
           <span className="flex items-center gap-2 text-lg font-bold" style={{ fontFamily: 'Fraunces, serif' }}>
             <TreePine size={20} className="text-gold" /> RACINES
@@ -105,7 +129,7 @@ function Shell({
       </header>
 
       {/* Sidebar desktop */}
-      <aside className="hidden w-60 flex-col gap-1 border-r border-line bg-card p-4 md:flex">
+      <aside className="hidden w-60 flex-col gap-1 border-r border-line bg-card p-4 md:flex print:!hidden">
         <div className="mb-5 px-2">
           <div className="flex items-center gap-2 text-xl font-extrabold text-primary" style={{ fontFamily: 'Fraunces, serif' }}>
             <TreePine size={22} className="text-gold" /> RACINES
@@ -149,7 +173,7 @@ function Shell({
       {/* Contenu */}
       <main className="flex-1 animate-fade-up p-4 pb-24 md:pb-6" key={loc.pathname}>
         {isGuest && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-gold/40 bg-gold-soft/60 p-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-gold/40 bg-gold-soft/60 p-3 print:hidden">
             <span className="text-sm text-muted">👀 Tu explores la famille <b className="text-ink">démo (Mballa)</b>. Crée ton compte pour bâtir <b className="text-ink">ta</b> famille.</span>
             <NavLink to="/signup" className="rounded-xl bg-gold px-3 py-1.5 text-sm font-semibold text-white">Créer mon compte</NavLink>
           </div>
@@ -158,7 +182,7 @@ function Shell({
       </main>
 
       {/* Bottom nav mobile */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex items-stretch justify-around border-t border-line bg-card/95 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex items-stretch justify-around border-t border-line bg-card/95 backdrop-blur md:hidden print:hidden">
         {bottomNav.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) =>
             `relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition ${isActive ? 'text-primary' : 'text-faint'}`}>
@@ -175,12 +199,12 @@ function Shell({
 
       {/* FAB ajouter (mobile) */}
       {loc.pathname !== '/ajouter' && (
-        <NavLink to="/ajouter" className="fixed bottom-20 right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-gold px-5 font-bold text-white shadow-lg shadow-gold/30 transition active:scale-95 md:hidden">
+        <NavLink to="/ajouter" className="fixed bottom-20 right-4 z-30 flex h-14 items-center gap-2 rounded-full bg-gold px-5 font-bold text-white shadow-lg shadow-gold/30 transition active:scale-95 md:hidden print:hidden">
           <UserPlus size={22} /> Ajouter
         </NavLink>
       )}
 
-      <Feedback />
+      <div className="print:hidden"><Feedback /></div>
     </div>
   )
 }

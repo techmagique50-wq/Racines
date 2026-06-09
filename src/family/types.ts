@@ -140,3 +140,46 @@ export interface Message {
   text: string
   createdAt: number
 }
+
+// ── Modération & historique ──────────────────────────────────────────────────
+
+export type AuditAction =
+  | 'person.add'
+  | 'person.update'
+  | 'person.merge'
+  | 'person.role'
+  | 'link.add'
+  | 'link.confirm'
+  | 'member.approve'
+  | 'member.refuse'
+  | 'post.add'
+  | 'post.delete'
+  | 'event.add'
+  | 'event.delete'
+  | 'account.signup'
+
+/** Entrée du journal d'activité (qui a fait quoi, quand). */
+export interface AuditEntry {
+  id: string
+  actorId: string // personId à l'origine de l'action ('' si système)
+  action: AuditAction
+  targetId?: string // personne / publication / événement concerné
+  summary: string // résumé lisible en français
+  createdAt: number
+}
+
+export const AUDIT_LABEL: Record<AuditAction, { label: string; tone: 'primary' | 'gold' | 'sage' | 'terre' | 'neutral' }> = {
+  'person.add': { label: 'Ajout de membre', tone: 'sage' },
+  'person.update': { label: 'Profil modifié', tone: 'neutral' },
+  'person.merge': { label: 'Fusion de fiches', tone: 'gold' },
+  'person.role': { label: 'Rôle changé', tone: 'gold' },
+  'link.add': { label: 'Lien proposé', tone: 'neutral' },
+  'link.confirm': { label: 'Lien confirmé', tone: 'sage' },
+  'member.approve': { label: 'Membre approuvé', tone: 'sage' },
+  'member.refuse': { label: 'Demande refusée', tone: 'terre' },
+  'post.add': { label: 'Publication', tone: 'neutral' },
+  'post.delete': { label: 'Publication supprimée', tone: 'terre' },
+  'event.add': { label: 'Événement créé', tone: 'primary' },
+  'event.delete': { label: 'Événement supprimé', tone: 'terre' },
+  'account.signup': { label: 'Nouveau compte', tone: 'primary' },
+}

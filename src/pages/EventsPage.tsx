@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CalendarHeart, MapPin, Plus, Users, X } from 'lucide-react'
+import { CalendarHeart, MapPin, Plus, Users, X, Trash2 } from 'lucide-react'
 import { useStore } from '../store'
 import { EVENT_KIND, type EventKind, type FamilyEvent } from '../family/types'
 import { Avatar, PageTitle, useGate } from '../ui/ui'
@@ -31,6 +31,8 @@ function EventCard({ event }: { event: FamilyEvent }) {
   const meId = useStore((s) => s.meId)
   const persons = useStore((s) => s.persons)
   const rsvp = useStore((s) => s.toggleRsvp)
+  const deleteEvent = useStore((s) => s.deleteEvent)
+  const isGardien = persons.find((p) => p.id === meId)?.role === 'gardien'
   const { gate } = useGate()
   const k = EVENT_KIND[event.kind]
   const going = event.participants.includes(meId)
@@ -48,6 +50,15 @@ function EventCard({ event }: { event: FamilyEvent }) {
             {event.place && <span className="flex items-center gap-1.5"><MapPin size={15} /> {event.place}</span>}
           </div>
         </div>
+        {isGardien && (
+          <button
+            onClick={() => { if (confirm(`Supprimer l’événement « ${event.title} » ? (action de modération, tracée)`)) deleteEvent(event.id) }}
+            title="Modérer : supprimer"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-faint transition hover:bg-terre/10 hover:text-terre"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
       {event.description && <p className="mt-3 text-sm text-muted">{event.description}</p>}
       <div className="mt-3 flex items-center justify-between border-t border-line pt-3">

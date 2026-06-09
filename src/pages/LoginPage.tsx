@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LogIn, TreePine } from 'lucide-react'
 import { useStore } from '../store'
+import { isSupabaseConfigured } from '../lib/supabase'
 
 export function LoginPage() {
   const login = useStore((s) => s.login)
+  const hydrate = useStore((s) => s.hydrate)
   const authId = useStore((s) => s.authId)
+  const meId = useStore((s) => s.meId)
   const theme = useStore((s) => s.theme)
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -15,14 +18,22 @@ export function LoginPage() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+  // Session déjà active (mode réel) → on récupère la famille et on entre.
   useEffect(() => {
-    if (authId) navigate('/', { replace: true })
-  }, [authId, navigate])
+    if (isSupabaseConfigured) hydrate()
+  }, [hydrate])
+  useEffect(() => {
+    if (authId && meId) navigate('/', { replace: true })
+  }, [authId, meId, navigate])
 
-  const submit = () => {
-    const res = login(email, password)
-    if (!res.ok) setError(res.error ?? 'Erreur')
-    else navigate('/', { replace: true })
+  const [busy, setBusy] = useState(false)
+  const submit = async () => {
+    setError(''); setBusy(true)
+    try {
+      const res = await login(email, password)
+      if (!res.ok) setError(res.error ?? 'Erreur')
+      else navigate('/', { replace: true })
+    } finally { setBusy(false) }
   }
 
   return (
@@ -41,17 +52,19 @@ export function LoginPage() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ton@email.cm" className="mb-3 w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-sage focus:outline-none" />
           <label className="mb-1 block text-xs font-medium text-muted">Mot de passe</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} placeholder="••••••••" className="mb-4 w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-sage focus:outline-none" />
-          <button onClick={submit} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 font-semibold text-white transition active:scale-[0.98]">
-            <LogIn size={18} /> Se connecter
+          <button onClick={submit} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 font-semibold text-white transition active:scale-[0.98] disabled:opacity-50">
+            <LogIn size={18} /> {busy ? 'Connexion…' : 'Se connecter'}
           </button>
 
           <p className="mt-4 text-center text-sm text-muted">Pas encore de compte ? <Link to="/signup" className="font-semibold text-sage">Rejoindre ma famille</Link></p>
         </div>
 
-        <div className="mt-4 rounded-xl border border-line bg-card p-3 text-xs text-muted">
-          <b className="text-ink">Comptes de démo</b> · mot de passe <code className="rounded bg-bg px-1">demo1234</code>
-          <div className="mt-1">herve@famille.cm · jean@famille.cm · marguerite@famille.cm</div>
-        </div>
+        {!isSupabaseConfigured && (
+          <div className="mt-4 rounded-xl border border-line bg-card p-3 text-xs text-muted">
+            <b className="text-ink">Comptes de démo</b> · mot de passe <code className="rounded bg-bg px-1">demo1234</code>
+            <div className="mt-1">herve@famille.cm · jean@famille.cm · marguerite@famille.cm</div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, MessageCircle, Send, Star } from 'lucide-react'
+import { Heart, MessageCircle, Send, Star, Trash2 } from 'lucide-react'
 import { useStore } from '../store'
 import type { Post } from '../family/types'
 import { Avatar, PageTitle, timeAgo, useGate, useRelationToMe } from '../ui/ui'
@@ -49,6 +49,8 @@ function PostCard({ post, now }: { post: Post; now: number }) {
   const meId = useStore((s) => s.meId)
   const toggleLike = useStore((s) => s.toggleLike)
   const addComment = useStore((s) => s.addComment)
+  const deletePost = useStore((s) => s.deletePost)
+  const isGardien = persons.find((p) => p.id === meId)?.role === 'gardien'
   const author = persons.find((p) => p.id === post.authorId)
   const rel = useRelationToMe(post.authorId)
   const memoryPerson = post.memoryOf ? persons.find((p) => p.id === post.memoryOf) : undefined
@@ -69,6 +71,15 @@ function PostCard({ post, now }: { post: Post; now: number }) {
             <span>· {timeAgo(post.createdAt, now)}</span>
           </div>
         </div>
+        {isGardien && (
+          <button
+            onClick={() => { if (confirm('Supprimer cette publication ? (action de modération, tracée dans l’historique)')) deletePost(post.id) }}
+            title="Modérer : supprimer"
+            className="grid h-8 w-8 place-items-center rounded-lg text-faint transition hover:bg-terre/10 hover:text-terre"
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
 
       {memoryPerson && (
