@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ZoomIn, ZoomOut, Maximize, Printer, FileDown } from 'lucide-react'
 import { useStore } from '../store'
-import { generationLevels } from '../family/engine'
+import { familyScope, generationLevels } from '../family/engine'
 import { downloadGedcom } from '../family/gedcom'
 import { PageTitle } from '../ui/ui'
 
@@ -25,12 +25,20 @@ export function TreePage() {
   const graph = useStore((s) => s.graph)()
   const navigate = useNavigate()
 
+  // Périmètre de la famille : on n'affiche que la lignée + les conjoints
+  // (les belles-familles / « cousins de cousins » sont exclus).
+  const scope = useMemo(() => familyScope(graph, meId), [graph, meId])
+  const treePersons = useMemo(() => {
+    const inIt = persons.filter((p) => scope.blood.has(p.id) || scope.boundary.has(p.id))
+    return inIt.some((p) => p.id === meId) ? inIt : persons // garde-fou
+  }, [persons, scope, meId])
+
   const layout = useMemo(() => {
     const levels = generationLevels(graph)
     const order = new Map<string, number>()
     const visited = new Set<string>()
     let cursor = 0
-    const roots = persons
+    const roots = treePersons
       .filter((p) => (graph.parents.get(p.id) ?? []).length === 0)
       .sort((a, b) => (a.birthYear ?? 0) - (b.birthYear ?? 0))
       .map((p) => p.id)
@@ -51,10 +59,10 @@ export function TreePage() {
         .forEach(place)
     }
     roots.forEach(place)
-    persons.forEach((p) => place(p.id))
+    treePersons.forEach((p) => place(p.id))
 
     const byLevel = new Map<number, string[]>()
-    for (const p of persons) {
+    for (const p of treePersons) {
       const lvl = levels.get(p.id) ?? 0
       if (!byLevel.has(lvl)) byLevel.set(lvl, [])
       byLevel.get(lvl)!.push(p.id)
@@ -72,7 +80,7 @@ export function TreePage() {
     }
     const height = (byLevel.size - 1) * (NODE_H + V_GAP) + NODE_H + 60
     return { nodes, width: totalW, height }
-  }, [persons, graph])
+  }, [treePersons, graph])
 
   const [scale, setScale] = useState(0.7)
   const [tx, setTx] = useState(20)
@@ -144,6 +152,7 @@ export function TreePage() {
         <div className="absolute left-3 top-3 z-10 space-y-1 rounded-lg bg-card/90 px-3 py-2 text-xs shadow ring-1 ring-line print:hidden">
           <div className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded-full bg-gold" /> ancêtre-pivot</div>
           <div className="flex items-center gap-2"><span className="text-terre">✦</span> en mémoire</div>
+          <div className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded border border-dashed border-sage/70" /> par alliance</div>
         </div>
 
         <svg
@@ -162,7 +171,7 @@ export function TreePage() {
               if (!a || !b) return null
               return <line key={un.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={un.status === 'confirmed' ? 'link-confirmed' : 'link-pending'} strokeWidth={2} />
             })}
-            {persons.map((child) => {
+            {treePersons.map((child) => {
               const cn = layout.nodes.get(child.id)
               if (!cn) return null
               const pf = filiations.filter((f) => f.childId === child.id)
@@ -174,11 +183,12 @@ export function TreePage() {
               const busY = (cn.y - NODE_H / 2 + midY + NODE_H / 2) / 2
               return <path key={`fil-${child.id}`} d={`M ${cn.x} ${cn.y - NODE_H / 2} L ${cn.x} ${busY} L ${midX} ${busY} L ${midX} ${midY + NODE_H / 2}`} fill="none" className={pending ? 'link-pending' : 'link-confirmed'} strokeWidth={2} />
             })}
-            {persons.map((p) => {
+            {treePersons.map((p) => {
               const n = layout.nodes.get(p.id)
               if (!n) return null
               const isMe = p.id === meId
               const memoire = p.state === 'memoire'
+              const boundary = scope.boundary.has(p.id) && !scope.blood.has(p.id)
               return (
                 <foreignObject key={p.id} x={n.x - NODE_W / 2} y={n.y - NODE_H / 2} width={NODE_W} height={NODE_H}>
                   <button
@@ -190,7 +200,9 @@ export function TreePage() {
                           ? 'border-gold bg-gold-soft'
                           : memoire
                             ? 'border-terre/30 bg-terre-soft'
-                            : 'border-line bg-card hover:border-sage'
+                            : boundary
+                              ? 'border-dashed border-sage/50 bg-card'
+                              : 'border-line bg-card hover:border-sage'
                     }`}
                   >
                     <span className="text-2xl leading-none">{p.avatar ?? '🧑🏾'}</span>
@@ -200,7 +212,7 @@ export function TreePage() {
                       </span>
                       <span className="block truncate text-[10px] text-muted">
                         {p.lastName}
-                        {p.birthYear ? ` · ${p.birthYear}${p.deathYear ? `–${p.deathYear}` : ''}` : ''}
+                        {boundary ? ' · alliance' : p.birthYear ? ` · ${p.birthYear}${p.deathYear ? `–${p.deathYear}` : ''}` : ''}
                       </span>
                     </span>
                   </button>

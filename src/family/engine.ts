@@ -329,6 +329,66 @@ export function generationLevels(g: FamilyGraph): Map<string, number> {
   return level
 }
 
+// ── Périmètre d'une famille (lignée bornée par les alliances) ────────────────
+// Une famille = la descendance d'un ancêtre-pivot + les conjoints entrés par
+// alliance, traités comme des NŒUDS-FRONTIÈRE : on les affiche mais on ne
+// traverse jamais leur propre lignée (la « belle-famille » reste hors périmètre).
+// → règle le problème des « cousins de mon cousin » qui ne sont pas ma famille.
+
+export interface FamilyScope {
+  /** Membres du sang : descendants de la lignée. */
+  blood: Set<string>
+  /** Conjoints entrés par alliance (nœuds-frontière, non étendus). */
+  boundary: Set<string>
+}
+
+/** Remonte la lignée patrilinéaire (père → grand-père → …) jusqu'au fondateur. */
+function patrilinealRoot(g: FamilyGraph, startId: string): string {
+  const seen = new Set<string>()
+  let cur = startId
+  while (!seen.has(cur)) {
+    seen.add(cur)
+    const father = (g.parents.get(cur) ?? []).map((id) => g.persons.get(id)).find((p) => p?.gender === 'M')
+    if (!father) return cur
+    cur = father.id
+  }
+  return cur
+}
+
+/**
+ * Calcule le périmètre de la famille.
+ * - S'il existe des ancêtres-pivots (`isPivot`), ils servent de fondateurs.
+ * - Sinon on ancre sur la racine patrilinéaire de `anchorId` (sa lignée).
+ * - Sinon (pas d'ancre) sur les ancêtres « racines » (sans parents connus).
+ */
+export function familyScope(g: FamilyGraph, anchorId?: string): FamilyScope {
+  const pivots = [...g.persons.values()].filter((p) => p.isPivot).map((p) => p.id)
+  let founders: string[]
+  if (pivots.length) founders = pivots
+  else if (anchorId && g.persons.has(anchorId)) founders = [patrilinealRoot(g, anchorId)]
+  else founders = [...g.persons.keys()].filter((id) => (g.parents.get(id) ?? []).length === 0)
+
+  const blood = new Set<string>(founders)
+  const boundary = new Set<string>()
+  const queue = [...founders]
+  while (queue.length) {
+    const p = queue.shift()!
+    // Conjoints → frontière (affichés, jamais étendus).
+    for (const s of g.spouses.get(p) ?? []) if (!blood.has(s)) boundary.add(s)
+    // Enfants → sang (étendus). Un descendant prime sur « frontière ».
+    for (const c of g.children.get(p) ?? [])
+      if (!blood.has(c)) {
+        blood.add(c)
+        boundary.delete(c)
+        queue.push(c)
+      }
+  }
+  return { blood, boundary }
+}
+
+export const inFamily = (s: FamilyScope, id: string) => s.blood.has(id) || s.boundary.has(id)
+export const isBoundary = (s: FamilyScope, id: string) => s.boundary.has(id) && !s.blood.has(id)
+
 // ── Matching à 4 niveaux (identité · clan/lignage · ancêtres-pivots · humain) ─
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 
